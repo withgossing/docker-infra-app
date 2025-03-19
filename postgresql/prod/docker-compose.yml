@@ -1,0 +1,82 @@
+# =====================================================================
+# 프로덕션 환경용 PostgreSQL 복제 구성 Docker Compose 설정
+# =====================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL Primary 데이터베이스 컨테이너
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: vue-postgres-primary
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=prodpassword
+      - POSTGRES_DB=vue_prod
+      # 복제를 위한 설정
+      - POSTGRES_REPLICATION_USER=replicator
+      - POSTGRES_REPLICATION_PASSWORD=replication_password
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ../../prod/postgres/primary:/docker-entrypoint-initdb.d
+      - ../../prod/postgres/conf/primary.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prod_db_network
+
+  # PostgreSQL Standby 데이터베이스 컨테이너
+  postgres-standby:
+    image: postgres:16-alpine
+    container_name: vue-postgres-standby
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=prodpassword
+      - POSTGRES_DB=vue_prod
+      # 복제를 위한 설정
+      - POSTGRES_REPLICATION_USER=replicator
+      - POSTGRES_REPLICATION_PASSWORD=replication_password
+      - PRIMARY_HOST=postgres-primary
+    volumes:
+      - postgres_standby_data:/var/lib/postgresql/data
+      - ../../prod/postgres/standby:/docker-entrypoint-initdb.d
+      - ../../prod/postgres/conf/standby.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - "5433:5432"
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    restart: unless-stopped
+    depends_on:
+      - postgres-primary
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prod_db_network
+
+volumes:
+  # 데이터베이스 데이터 저장 볼륨
+  postgres_primary_data:
+    name: postgres_primary_data
+  postgres_standby_data:
+    name: postgres_standby_data
+
+networks:
+  # 프로덕션 데이터베이스 네트워크 정의
+  prod_db_network:
+    name: vue_prod_db_network
+    driver: bridge

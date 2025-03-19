@@ -1,0 +1,43 @@
+# =====================================================================
+# 개발 환경용 PostgreSQL 데이터베이스 Docker Compose 설정
+# =====================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스 컨테이너
+  postgres:
+    image: postgres:16-alpine
+    container_name: vue-postgres-dev
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_DB=vue_dev
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    # 데이터베이스 성능 최적화 설정
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "work_mem=8MB"
+    # 외부 네트워크 정의
+    networks:
+      - dev_network
+
+volumes:
+  # 데이터베이스 데이터를 저장할 볼륨
+  dev_postgres_data:
+    name: dev_postgres_data
+
+networks:
+  # 개발 환경 네트워크 정의 - 앱 컨테이너와 연결을 위해 사용
+  dev_network:
+    name: vue_dev_network
+    driver: bridge

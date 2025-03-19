@@ -1,0 +1,42 @@
+# =====================================================================
+# 테스트 환경용 PostgreSQL 데이터베이스 Docker Compose 설정
+# =====================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스 컨테이너
+  # 개발 환경과 동일한 데이터베이스 볼륨 사용
+  postgres:
+    image: postgres:16-alpine
+    container_name: vue-postgres-test
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_DB=vue_dev
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # 호스트 포트 충돌 방지를 위해 포트를 5433으로 변경
+    restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
+    # 외부 네트워크 정의
+    networks:
+      - test_network
+
+volumes:
+  # 개발 환경과 공유하는 데이터베이스 볼륨
+  dev_postgres_data:
+    name: dev_postgres_data
+    external: true
+
+networks:
+  # 테스트 환경 네트워크 정의
+  test_network:
+    name: vue_test_network
+    driver: bridge
